@@ -10,6 +10,17 @@ if (typeof window === 'undefined'){
  * and two white pieces at [3, 3] and [4, 4].
  */
 function _makeGrid() {
+  let grid = new Array(8);
+
+  for (let i = 0; i < grid.length; i++) {
+    grid[i] = (new Array(8));
+  }
+
+  grid[3][4] = new Piece("black");
+  grid[4][3] = new Piece("black");
+  grid[3][3] = new Piece("white")
+  grid[4][4] = new Piece("white");
+  return grid;
 }
 
 /**
@@ -29,6 +40,13 @@ Board.DIRS = [
  * Checks if a given position is on the Board.
  */
 Board.prototype.isValidPos = function (pos) {
+  let x = pos[0]
+  let y = pos[1]
+
+  if ((x > 7) || (y > 7)) return false;
+  if ((x < 0) || (y < 0)) return false;
+  return true;
+
 };
 
 /**
@@ -36,6 +54,11 @@ Board.prototype.isValidPos = function (pos) {
  * throwing an Error if the position is invalid.
  */
 Board.prototype.getPiece = function (pos) {
+  if (this.isValidPos(pos)) {
+    return this.grid[pos[0]][pos[1]]
+  } else {
+    throw new Error('Not valid pos!') 
+  }
 };
 
 /**
@@ -43,12 +66,20 @@ Board.prototype.getPiece = function (pos) {
  * matches a given color.
  */
 Board.prototype.isMine = function (pos, color) {
+  if (!this.getPiece(pos)) return false;
+
+  if (this.grid[pos[0]][pos[1]].color === color) {
+    return true;
+  } else {
+    return false;
+  }
 };
 
 /**
  * Checks if a given position has a piece on it.
  */
 Board.prototype.isOccupied = function (pos) {
+  return (this.getPiece(pos)) ? true : false;
 };
 
 /**
@@ -65,7 +96,20 @@ Board.prototype.isOccupied = function (pos) {
  * Returns empty array if no pieces of the opposite color are found.
  */
 Board.prototype._positionsToFlip = function (pos, color, dir, piecesToFlip) {
+  piecesToFlip = piecesToFlip || []
+  let newPos = [pos[0] + dir[0], pos[1] + dir[1]];
+  if (!this.isValidPos(newPos)) return [];
+  if (!this.getPiece(newPos)) return [];
+
+  if (!this.isMine(newPos, color)) {
+    piecesToFlip.push(newPos)
+  } else {
+    return piecesToFlip
+  }
+
+  return this._positionsToFlip(newPos, color, dir, piecesToFlip);
 }
+
 
 /**
  * Checks that a position is not already occupied and that the color
@@ -73,6 +117,16 @@ Board.prototype._positionsToFlip = function (pos, color, dir, piecesToFlip) {
  * color being flipped.
  */
 Board.prototype.validMove = function (pos, color) {
+  if (this.isOccupied(pos)) return false;
+  let positionsToFlip = false;
+
+  Board.DIRS.forEach(dir => {
+    let piecesToFlip = [];
+    if (this._positionsToFlip(pos, color, dir, piecesToFlip).length > 0) {
+      positionsToFlip = true;
+    }
+  });
+  return positionsToFlip;
 };
 
 /**
@@ -82,6 +136,18 @@ Board.prototype.validMove = function (pos, color) {
  * Throws an error if the position represents an invalid move.
  */
 Board.prototype.placePiece = function (pos, color) {
+  if (!this.validMove(pos, color)) throw new Error('Invalid move!')
+
+  this.grid[pos[0]][pos[1]] = new Piece(color);
+
+  let piecesToFlip = [];
+  Board.DIRS.forEach(dir => {
+    piecesToFlip.concat(this._positionsToFlip(pos, color, dir, piecesToFlip))
+  });
+
+  piecesToFlip.forEach(pos => {
+    this.getPiece(pos).flip();
+  })
 };
 
 /**
@@ -89,12 +155,25 @@ Board.prototype.placePiece = function (pos, color) {
  * the Board for a given color.
  */
 Board.prototype.validMoves = function (color) {
+  let valids = [];
+
+  for (let row = 0; row < this.grid[0].length; row++) {
+    for (let col = 0; col < this.grid[0].length; col++) {
+      let pos = [row, col]
+      if (this.validMove(pos, color)) {
+        valids.push(pos);
+      }
+    }
+  }
+
+ return valids;
 };
 
 /**
  * Checks if there are any valid moves for the given color.
  */
 Board.prototype.hasMove = function (color) {
+  return this.validMoves(color).length > 0
 };
 
 /**
@@ -102,6 +181,9 @@ Board.prototype.hasMove = function (color) {
  * the black player are out of moves.
  */
 Board.prototype.isOver = function () {
+  if (this.hasMove("white") || this.hasMove("black")) return false;
+  // if (!this.hasMove("white") || !this.hasMove("black")) return true;
+  return true;
 };
 
 /**
@@ -115,3 +197,4 @@ if (typeof window === 'undefined'){
   module.exports = Board;
 }
 // DON'T TOUCH THIS CODE
+
